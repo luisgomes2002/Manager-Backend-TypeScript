@@ -1,13 +1,174 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  COACH
+  NUTRITIONIST
+  STUDENT
+}
+
+enum RegistrationType {
+  CREF
+  CRN
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+enum ProfessionalType {
+  COACH
+  NUTRITIONIST
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentProfile      StudentProfile?
+  professionalProfile ProfessionalProfile?
+
+  studentsAsCoach        StudentProfile[] @relation("CoachToStudent")
+  studentsAsNutritionist StudentProfile[] @relation("NutritionistToStudent")
+
+  receivedPayments Payment[] @relation("ProfessionalReceiver")
+}
+
+model ProfessionalProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  registrationType RegistrationType
+  registrationId   String
+  specialty        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StudentProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  coachId        String?
+  coach          User?   @relation("CoachToStudent", fields: [coachId], references: [id])
+  nutritionistId String?
+  nutritionist   User?   @relation("NutritionistToStudent", fields: [nutritionistId], references: [id])
+
+  biometrics       Biometrics?
+  healthRecord     HealthRecord?
+  lifestyle        Lifestyle?
+  physicalTraining PhysicalTraining?
+  finance          FinancialConfig?
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Biometrics {
+  id               String         @id @default(uuid())
+  studentProfileId String         @unique
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  dateOfBirth          DateTime
+  biologicalSex        String
+  menstrualCycleImpact String?
+}
+
+model HealthRecord {
+  id               String         @id @default(uuid())
+  studentProfileId String         @unique
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  healthIssues  String?
+  hypertension  String?
+  diabetes      String?
+  cardiacIssues String?
+  mentalHealth  String?
+  steroidUse    String?
+
+  dailyMedication Boolean      @default(false)
+  medications     Medication[]
+}
+
+model Medication {
+  id             String       @id @default(uuid())
+  healthRecordId String
+  healthRecord   HealthRecord @relation(fields: [healthRecordId], references: [id], onDelete: Cascade)
+
+  name      String
+  pathology String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lifestyle {
+  id               String         @id @default(uuid())
+  studentProfileId String         @unique
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  stressLevel        String?
+  sleepHours         String?
+  dietQuality        String?
+  alcoholConsumption String?
+  smoking            String?
+}
+
+model PhysicalTraining {
+  id               String         @id @default(uuid())
+  studentProfileId String         @unique
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  activityLevel       Int
+  weeklyFrequency     String?
+  currentActivities   String?
+  goals               String?
+  perceivedImpact     String?
+  bodyComfort         String?
+  exerciseRestriction String?
+  restrictedExercise  String?
+  preferredShift      String?
+}
+
+model FinancialConfig {
+  id               String         @id @default(uuid())
+  studentProfileId String         @unique
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  coachDueDate        Int?
+  nutritionistDueDate Int?
+}
+
+model Payment {
+  id        String         @id @default(uuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  professionalId String
+  professional   User   @relation("ProfessionalReceiver", fields: [professionalId], references: [id])
+
+  serviceType ProfessionalType
+  amount      Decimal?
+  dueDate     DateTime
+  paymentDate DateTime?
+  status      PaymentStatus    @default(PENDING)
+
+  createdAt DateTime @default(now())
 }
